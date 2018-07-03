@@ -11,9 +11,10 @@ from PIL import Image
 
 
 class GTA5DataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
+    def __init__(self, root, list_path, num_classes, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
         self.root = root
         self.list_path = list_path
+        self.num_classes = num_classes
         self.crop_size = crop_size
         self.scale = scale
         self.ignore_label = ignore_label
@@ -58,16 +59,16 @@ class GTA5DataSet(data.Dataset):
         label = np.asarray(label, np.float32)
 
         # re-assign labels to match the format of Cityscapes
-        label_copy = 255 * np.ones(label.shape, dtype=np.float32)
-        for k, v in self.id_to_trainid.items():
-            label_copy[label == k] = v
+        #label_copy = 255 * np.ones(label.shape, dtype=np.float32)
+        #for k, v in self.id_to_trainid.items():
+        #    label_copy[label == k] = v
 
         size = image.shape
         image = image[:, :, ::-1]  # change to BGR
         image -= self.mean
         image = image.transpose((2, 0, 1))
 
-        return image.copy(), label_copy.copy(), np.array(size), name
+        return image.copy(), label.copy(), np.array(size), name
 
 
 if __name__ == '__main__':
