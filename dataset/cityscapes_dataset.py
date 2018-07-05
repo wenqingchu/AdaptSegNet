@@ -25,13 +25,16 @@ class cityscapesDataSet(data.Dataset):
 	    self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
 
-        #self.id_to_trained = {0: 255, 1: 255, 2: 255, 3: 255, 4: 255, 5: 255, 6: 255, 7: 0, 8: 1, 9: 255, 10: 255, 11: 2, 12: 3,
+        self.label2train=[[0, 255],[1, 255],[2, 255],[3, 255],[4, 255],[5, 255],[6, 255],[7, 0],[8, 1],[9, 255],[10, 255],[11, 2],[12, 3],
+                [13, 4],[14, 255],[15, 255],[16, 255],[17, 5],[18, 255],[19, 6],[20, 7],[21, 8],[22, 9],[23, 10],[24, 11],[25, 12],
+                [26, 13],[27, 14],[28, 15],[29, 255],[30, 255],[31, 16],[32, 17],[33, 18],[-1, 255]]
+        #self.id_to_trainid = {0: 255, 1: 255, 2: 255, 3: 255, 4: 255, 5: 255, 6: 255, 7: 0, 8: 1, 9: 255, 10: 255, 11: 2, 12: 3,
         #             13: 4, 14: 255, 15: 255, 16: 255, 17: 5, 18: 255, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12,
         #             26: 13, 27: 14, 28: 15, 29: 255, 30: 255, 31: 16, 32: 17, 33: 18, -1: 255}
 
-        self.id_to_trained = {0: 19, 1: 19, 2: 19, 3: 19, 4: 19, 5: 199, 6: 19, 7: 0, 8: 1, 9: 19, 10: 19, 11: 2, 12: 3,
-                     13: 4, 14: 19, 15: 19, 16: 19, 17: 5, 18: 19, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12,
-                     26: 13, 27: 14, 28: 15, 29: 19, 30: 19, 31: 16, 32: 17, 33: 18, -1: 19}
+        #self.id_to_trainid = {0: 19, 1: 19, 2: 19, 3: 19, 4: 19, 5: 199, 6: 19, 7: 0, 8: 1, 9: 19, 10: 19, 11: 2, 12: 3,
+         #            13: 4, 14: 19, 15: 19, 16: 19, 17: 5, 18: 19, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12,
+          #           26: 13, 27: 14, 28: 15, 29: 19, 30: 19, 31: 16, 32: 17, 33: 18, -1: 19}
 
 
         self.set = set
@@ -62,16 +65,20 @@ class cityscapesDataSet(data.Dataset):
         image = np.asarray(image, np.float32)
         label = np.asarray(label, np.float32)
 
-        #label_copy = 255 * np.ones(label.shape, dtype=np.float32)
+        label_copy = 255 * np.ones(label.shape, dtype=np.float32)
         #for k, v in self.id_to_trainid.items():
         #    label_copy[label == k] = v
 
+        for ind in range(len(self.label2train)):
+            label_copy[label == self.label2train[ind][0]] = self.label2train[ind][1]
+        label_copy[label_copy == 255] = 19
+        label_copy = label_copy[np.newaxis,:]
         size = image.shape
         image = image[:, :, ::-1]  # change to BGR
         image -= self.mean
         image = image.transpose((2, 0, 1))
 
-        return image.copy(), label.copy(), np.array(size), name
+        return image.copy(), label_copy.copy(), np.array(size), name
 
 
 if __name__ == '__main__':

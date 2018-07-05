@@ -24,7 +24,7 @@ from dataset.cityscapes_dataset import cityscapesDataSet
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
 MODEL = 'DeepLab'
-BATCH_SIZE = 1
+BATCH_SIZE = 8
 ITER_SIZE = 1
 NUM_WORKERS = 4
 DATA_DIRECTORY = './data/GTA5'
@@ -33,25 +33,25 @@ VALDATA_LIST_PATH = './dataset/gta5_list/val.txt'
 IGNORE_LABEL = 255
 #INPUT_SIZE = '1280,720'
 INPUT_SIZE = '1024,512'
-DATA_DIRECTORY_TARGET = './data/Cityscapes/data'
+DATA_DIRECTORY_TARGET = './data/cityscapes'
 DATA_LIST_PATH_TARGET = './dataset/cityscapes_list/train.txt'
 VALDATA_LIST_PATH_TARGET = './dataset/cityscapes_list/val.txt'
 INPUT_SIZE_TARGET = '1024,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
 #NUM_CLASSES = 19
-NUM_CLASSES = 35
+NUM_CLASSES = 20
 NUM_STEPS = 250000
 NUM_STEPS_STOP = 80000  # early stopping
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = 'http://vllab.ucmerced.edu/ytsai/CVPR18/DeepLab_resnet_pretrained_init-f81d91e8.pth'
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 5000
+SAVE_PRED_EVERY = 1000
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
-LEARNING_RATE_D = 1e-4
+LEARNING_RATE_D = 1e-3
 LAMBDA_SEG = 0.1
 LAMBDA_ADV_TARGET1 = 0.0002
 LAMBDA_ADV_TARGET2 = 0.001
@@ -184,7 +184,7 @@ def main():
     h, w = map(int, args.input_size_target.split(','))
     input_size_target = (h, w)
 
-    cudnn.enabled = True
+    #cudnn.enabled = True
     gpu = args.gpu
 
     # Create network
@@ -208,12 +208,12 @@ def main():
     #model.train()
     #model.cuda(args.gpu)
 
-    cudnn.benchmark = True
+    #cudnn.benchmark = True
 
     # init D
     model_D = FCDiscriminator(num_classes=args.num_classes)
     model_D.train()
-    model_D.cuda(args.gpu)
+    model_D.cuda(0)
     #model_D1 = FCDiscriminator(num_classes=args.num_classes)
     #model_D2 = FCDiscriminator(num_classes=args.num_classes)
 
@@ -236,7 +236,7 @@ def main():
 
 
     gta_valloader = data.DataLoader(
-        GTA5DataSet(args.data_dir, args.valdata_list, args.num_classes, max_iters=args.num_steps * args.iter_size * args.batch_size,
+        GTA5DataSet(args.data_dir, args.valdata_list, args.num_classes, max_iters=None,
                     crop_size=input_size,
                     scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN),
         batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
@@ -248,18 +248,18 @@ def main():
                                                      max_iters=args.num_steps * args.iter_size * args.batch_size,
                                                      crop_size=input_size_target,
                                                      scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
-                                                     set=args.set),
+                                                     set='train'),
                                    batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
 
 
     cityscapes_targetloader_iter = enumerate(cityscapes_targetloader)
 
-    cityscapes_valtargetloader = data.DataLoader(cityscapesDataSet(args.valdata_dir_target, args.data_list_target, args.num_classes,
-                                                     max_iters=args.num_steps * args.iter_size * args.batch_size,
+    cityscapes_valtargetloader = data.DataLoader(cityscapesDataSet(args.data_dir_target, args.valdata_list_target, args.num_classes,
+                                                     max_iters=None,
                                                      crop_size=input_size_target,
                                                      scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
-                                                     set=args.set),
+                                                     set='val'),
                                    batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
 
@@ -309,37 +309,57 @@ def main():
         _, batch = gta_trainloader_iter.next()
         images, labels, _, _ = batch
         size = labels.size()
+        #print(size)
+        #labels = Variable(labels)
         oneHot_size = (size[0], args.num_classes, size[2], size[3])
-        input_label = torch.cuda(args.gpu).FloatTensor(torch.Size(oneHot_size)).zero_()
-        input_label = input_label.scatter_(1, labels.data.long().cuda(args.gpu), 1.0)
-        labels = Variable(input_label)
-        D_out1 = model_D(labels)
+        input_label = torch.FloatTensor(torch.Size(oneHot_size)).zero_()
+        input_label = input_label.scatter_(1, labels.long(), 1.0)
+        #print(input_label.size())
+        labels1 = Variable(input_label).cuda(0)
+        #D_out1 = model_D(labels)
 
-        loss_out1 = bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(source_label)).cuda(args.gpu))
+        #print(D_out1.data.size())
+        #loss_out1 = bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(source_label)).cuda(0))
 
-        _, batch = cityscapes_targetloader.next()
+        _, batch = cityscapes_targetloader_iter.next()
         images, labels, _, _ = batch
         size = labels.size()
+        #labels = Variable(labels)
         oneHot_size = (size[0], args.num_classes, size[2], size[3])
-        input_label = torch.cuda(args.gpu).FloatTensor(torch.Size(oneHot_size)).zero_()
-        input_label = input_label.scatter_(1, labels.data.long().cuda(args.gpu), 1.0)
-        labels = Variable(input_label)
-        D_out2 = model_D(labels)
+        input_label = torch.FloatTensor(torch.Size(oneHot_size)).zero_()
 
-        loss_out2 = bce_loss(D_out2, Variable(torch.FloatTensor(D_out2.data.size()).fill_(target_label)).cuda(args.gpu))
+        input_label = input_label.scatter_(1, labels.long(), 1.0)
+        labels2 = Variable(input_label).cuda(0)
 
-        loss = loss_out1 + loss_out2
-        loss = loss / args.iter_size
+        #print(labels1.data.size())
+        #print(labels2.data.size())
+        labels = torch.cat((labels1, labels2), 0)
+        #print(labels.data.size())
+
+
+        #D_out2 = model_D(labels)
+        D_out = model_D(labels)
+        #print(D_out.data.size())
+
+        target_size = D_out.data.size()
+        target_labels1 = torch.FloatTensor(torch.Size((target_size[0]/2, target_size[1], target_size[2], target_size[3]))).fill_(source_label)
+        target_labels2 = torch.FloatTensor(torch.Size((target_size[0]/2, target_size[1], target_size[2], target_size[3]))).fill_(target_label)
+        target_labels = torch.cat((target_labels1, target_labels2), 0)
+        target_labels = Variable(target_labels).cuda(0)
+        #print(target_labels.data.size())
+        loss_out = bce_loss(D_out, target_labels)
+
+        loss = loss_out / args.iter_size
         loss.backward()
 
-        loss_D_value += loss_out1.data.cpu().numpy()[0] / args.iter_size + loss_out2.data.cpu().numpy()[0] / args.iter_size
+        loss_D_value += loss_out.data.cpu().numpy()[0] / args.iter_size
 
+        #print(loss_D_value)
         optimizer_D.step()
 
-        print('exp = {}'.format(args.snapshot_dir))
-        print(
-        'iter = {0:8d}/{1:8d}, loss_D = {2:.3f}'.format(
-            i_iter, args.num_steps, loss_D_value))
+        #print('exp = {}'.format(args.snapshot_dir))
+        if i_iter %100 == 0:
+            print('iter = {0:8d}/{1:8d}, loss_D = {2:.3f}'.format(i_iter, args.num_steps, loss_D_value))
 
         if i_iter >= args.num_steps_stop - 1:
             print('save model ...')
@@ -352,25 +372,44 @@ def main():
 
             model_D.eval()
             loss_valD_value = 0
+            correct = 0
+            wrong = 0
             for i, (images, labels, _, _) in enumerate(gta_valloader):
+                #if i > 500:
+                #    break
                 size = labels.size()
+                #labels = Variable(labels)
                 oneHot_size = (size[0], args.num_classes, size[2], size[3])
-                input_label = torch.cuda(args.gpu).FloatTensor(torch.Size(oneHot_size)).zero_()
-                input_label = input_label.scatter_(1, labels.data.long().cuda(args.gpu), 1.0)
-                labels = Variable(input_label)
+                input_label = torch.FloatTensor(torch.Size(oneHot_size)).zero_()
+                input_label = input_label.scatter_(1, labels.long(), 1.0)
+                labels = Variable(input_label).cuda(0)
                 D_out1 = model_D(labels)
-                loss_out1 = bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(source_label)).cuda(args.gpu))
+                loss_out1 = bce_loss(D_out1, Variable(torch.FloatTensor(D_out1.data.size()).fill_(source_label)).cuda(0))
                 loss_valD_value += loss_out1.data.cpu().numpy()[0]
+                correct = correct + (D_out1.data.cpu() < 0).sum()/100
+                wrong = wrong + (D_out1.data.cpu() >=0).sum()/100
+                #accuracy = 1.0 * correct / (wrong + correct)
+                #print('accuracy:%f' % accuracy)
+                #print(correct)
+                #print(wrong)
+
 
             for i, (images, labels, _, _) in enumerate(cityscapes_valtargetloader):
+                #if i > 500:
+                #    break
                 size = labels.size()
+                #labels = Variable(labels)
                 oneHot_size = (size[0], args.num_classes, size[2], size[3])
-                input_label = torch.cuda(args.gpu).FloatTensor(torch.Size(oneHot_size)).zero_()
-                input_label = input_label.scatter_(1, labels.data.long().cuda(args.gpu), 1.0)
-                labels = Variable(input_label)
+                input_label = torch.FloatTensor(torch.Size(oneHot_size)).zero_()
+                input_label = input_label.scatter_(1, labels.long(), 1.0)
+                labels = Variable(input_label).cuda(0)
                 D_out2 = model_D(labels)
-                loss_out2 = bce_loss(D_out2, Variable(torch.FloatTensor(D_out2.data.size()).fill_(target_label)).cuda(args.gpu))
+                loss_out2 = bce_loss(D_out2, Variable(torch.FloatTensor(D_out2.data.size()).fill_(target_label)).cuda(0))
                 loss_valD_value += loss_out2.data.cpu().numpy()[0]
+                wrong = wrong + (D_out2.data.cpu() < 0).sum()
+                correct = correct + (D_out2.data.cpu() >=0).sum()
+            accuracy = 1.0 * correct / (wrong + correct)
+            print('accuracy:%f' % accuracy)
 
             print('iter = {0:8d}/{1:8d}, loss_valD = {2:.3f}'.format(i_iter, args.num_steps, loss_valD_value))
 
