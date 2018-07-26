@@ -41,7 +41,7 @@ map_color_to_20classes = {
     (220, 220,  0): 7,     # traffic sign
     (107, 142, 35): 8,     # vegetation
     (152, 251, 152): 9,    # terrain
-    (0, 130, 180): 10,      # sky
+    (70, 130, 180): 10,      # sky
     (220, 20, 60): 11,      # person
     (255, 0, 0): 12,        # rider
     (0, 0, 142): 13,        # car

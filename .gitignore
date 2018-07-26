@@ -4,3 +4,6 @@
 *.jpg
 .DS_Store
 .idea/
+data/
+*.zip
+results/
