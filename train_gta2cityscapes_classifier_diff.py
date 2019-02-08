@@ -31,10 +31,10 @@ DATA_DIRECTORY = './data/GTA5'
 DATA_LIST_PATH = './dataset/gta5_list/train.txt'
 VALDATA_LIST_PATH = './dataset/gta5_list/val.txt'
 IGNORE_LABEL = 255
-INPUT_SIZE = '957,526'
+#INPUT_SIZE = '957,526'
+INPUT_SIZE = '1024,512'
 #INPUT_SIZE = '1024,512'
-#INPUT_SIZE = '1024,512'
-DATA_DIRECTORY_TARGET = './data/cityscapes'
+DATA_DIRECTORY_TARGET = './data/Cityscapes'
 DATA_LIST_PATH_TARGET = './dataset/cityscapes_list/train.txt'
 VALDATA_LIST_PATH_TARGET = './dataset/cityscapes_list/val.txt'
 INPUT_SIZE_TARGET = '1024,512'
@@ -378,8 +378,8 @@ def main():
                 D_out1_data = D_out1.data.cpu().numpy()
                 correct = correct + (D_out1_data < 0).sum()/10
                 wrong = wrong + (D_out1_data >=0).sum()/10
-                #accuracy = 1.0 * correct / (wrong + correct)
-                #print('accuracy:%f' % accuracy)
+            accuracy = 1.0 * correct / (wrong + correct)
+            #print('accuracy:%f' % accuracy)
                 #print(correct)
                 #print(wrong)
 
@@ -409,9 +409,9 @@ def main():
                 #    #print(name[j])
                 #    np.save('results/' + name[j]+'.npy', D_out2_data[j])
             accuracy = 1.0 * correct / (wrong + correct)
-            print('accuracy:%f' % accuracy)
+            #print('accuracy:%f' % accuracy)
 
-            print('iter = {0:8d}/{1:8d}, loss_valD = {2:.3f}'.format(i_iter, args.num_steps, loss_valD_value))
+            print('iter = {0:8d}/{1:8d}, accuracy = {2:.3f}'.format(i_iter, args.num_steps, accuracy))
 
 
             model_D.train()
